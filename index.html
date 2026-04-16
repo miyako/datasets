@@ -95,6 +95,12 @@
       color: var(--text2);
     }
 
+    main {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem; /* This adds perfect spacing between your sections automatically */
+    }
+      
     .content-section {
       background: var(--surface);
       /*border: 1px solid var(--border);*/
@@ -129,6 +135,18 @@
         <h2 class="section-title">ChatML Viewer</h2>
         <p class="content-text">Use <a href="chatml-viewer.html">this online tool</a> to browse <strong>ChatML</strong> files.</p>
       </section>
+
+      <section class="content-section">
+        <h2 class="section-title">Tech Notes</h2>
+        <p class="content-text">The <a href="https://huggingface.co/datasets/keisuke-miyako/technotes-2411-2603">technotes-2411-2603</a> dataset is based on <strong>PDF text and source code</strong> published as <a href="https://kb.4d.com">Tech Notes</a> by 4D.</p>
+      </section>
+      
+      <section class="content-section">
+        <h2 class="section-title">Tech Tips</h2>
+        <p class="content-text">The <a href="https://huggingface.co/datasets/keisuke-miyako/kb-4d-com-2026-0414">kb-4d-com-2026-0414</a> dataset is based on <strong>PDF text and source code</strong> published as <a href="https://kb.4d.com">Tech Tips</a> by 4D.</p>
+      </section>
+      
+      
     </main>
 
   </div>
