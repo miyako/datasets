@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatML Viewer</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Sticky Header -->
+  <header id="main-header">
+    <div class="header-titles">
+      <h1>ChatML viewer</h1>
+      <span id="subtitle">paste · drop · render</span>
+    </div>
+    
+    <div id="nav-controls" style="display:none;">
+      <div id="pagination" style="display:none;">
+        <button class="icon-btn" onclick="prevConv()" title="Previous Conversation">❮</button>
+        <span id="page-indicator">1 / 1</span>
+        <button class="icon-btn" onclick="nextConv()" title="Next Conversation">❯</button>
+      </div>
+      <button class="ghost" onclick="resetView()">← Back to Input</button>
+    </div>
+  </header>
+
+  <div class="page">
+    <!-- Input Panel -->
+    <div id="input-panel">
+      <div id="drop-zone"
+        onclick="document.getElementById('file-picker').click()"
+        ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDrop(event)">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p><b>Drop a .json or .jsonl file</b> here, or click to browse</p>
+      </div>
+      <input type="file" id="file-picker" accept=".json,.jsonl,application/json" style="display:none" onchange="loadFile(this)">
+
+      <textarea id="json-input" placeholder='Paste ChatML JSON or JSONL here. 
+Supports arrays, {messages:[...]} objects, or multiple lines of JSON (JSONL).
+
+Example:
+[
+  {"role": "system", "content": "You are a helpful assistant."},
+  {"role": "user", "content": "Hello!"},
+  {"role": "assistant", "content": "Hi there! How can I help?"}
+]
+
+Press Ctrl+Enter (Cmd+Enter on Mac) to render.'></textarea>
+
+      <div id="error-box"></div>
+
+      <div class="actions">
+        <button class="primary" onclick="processInput()">Render conversation</button>
+        <button class="ghost" onclick="loadSample()">load sample</button>
+        <span class="hint">Ctrl+Enter</span>
+      </div>
+    </div>
+
+    <!-- Render Area -->
+    <div id="conversation" style="display: none;"></div>
+    <div id="stats-bar" style="display: none;"></div>
+  </div>
+
+  <!-- Scroll to Top / Bottom Controls -->
+  <div id="scroll-controls">
+    <button class="fab" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" title="Scroll to Top">↑</button>
+    <button class="fab" onclick="window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})" title="Scroll to Bottom">↓</button>
+  </div>
+
+  <script src="js/script.js"></script>
+</body>
+</html>
