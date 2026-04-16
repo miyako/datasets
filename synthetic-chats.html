@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>synthetic chats | 4D LLM Training</title>
+  
+  <style>
+    /* --- COLOR VARIABLES (Same as index) --- */
+    :root {
+      --bg: #f9f8f6; --bg-alpha: rgba(249, 248, 246, 0.85);
+      --surface: #ffffff; --surface2: #f1efe8;
+      --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+      --text: #1a1a18; --text2: #5f5e5a; --text3: #888780;
+      --radius-md: 8px; --radius-lg: 12px;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --font-mono: "SF Mono", "Cascadia Code", "Fira Code", monospace;
+      
+      /* Chat Colors */
+      --user-bg: #E6F1FB; --user-text: #042C53; --user-border: #B5D4F4; --user-label: #185FA5;
+      --asst-bg: #EEEDFE; --asst-text: #26215C; --asst-border: #CECBF6; --asst-label: #3C3489;
+      --sys-bg: #F1EFE8; --sys-text: #5f5e5a; --sys-border: rgba(0,0,0,0.15);
+      --tool-bg: #E1F5EE; --tool-text: #04342C; --tool-border: #9FE1CB; --tool-label: #0F6E56;
+      --danger-bg: #FCEBEB; --danger-text: #A32D2D;
+
+      /* Links */
+      --link: #185FA5;
+      --link-hover: #0C447C;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a18; --bg-alpha: rgba(26, 26, 24, 0.85);
+        --surface: #242422; --surface2: #2c2c2a;
+        --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+        --text: #f0ede8; --text2: #b4b2a9; --text3: #888780;
+        
+        /* Chat Colors Dark Mode */
+        --user-bg: #0C447C; --user-text: #E6F1FB; --user-border: #185FA5; --user-label: #85B7EB;
+        --asst-bg: #26215C; --asst-text: #EEEDFE; --asst-border: #534AB7; --asst-label: #AFA9EC;
+        --sys-bg: #2c2c2a; --sys-text: #888780; --sys-border: rgba(255,255,255,0.1);
+        --tool-bg: #04342C; --tool-text: #E1F5EE; --tool-border: #1D9E75; --tool-label: #5DCAA5;
+        --danger-bg: #3d1a1a; --danger-text: #f09595;
+
+        /* Links Dark Mode */
+        --link: #85B7EB;
+        --link-hover: #B5D4F4;
+      }
+    }
+
+    /* --- BASE STYLES --- */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: var(--bg); color: var(--text);
+      font-family: var(--font-sans); font-size: 15px;
+      line-height: 1.6; min-height: 100vh; scroll-behavior: smooth;
+    }
+    a { color: var(--link); text-decoration: none; transition: color 0.2s; }
+    a:hover, a:focus { color: var(--link-hover); text-decoration: underline; }
+    code { font-family: var(--font-mono); font-size: 0.9em; padding: 0.1em 0.3em; background: rgba(128,128,128,0.15); border-radius: 4px; }
+
+    /* --- LAYOUT STYLES --- */
+    .container { max-width: 800px; margin: 0 auto; padding: 2rem 2rem 4rem 2rem; }
+    
+    main { display: flex; flex-direction: column; gap: 2rem; }
+    
+    .content-section {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 2rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    }
+    .section-title {
+      font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;
+      padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);
+    }
+
+    /* --- BREADCRUMBS STYLES --- */
+    .breadcrumbs {
+      margin-bottom: 2rem;
+      font-size: 0.95rem;
+    }
+    .breadcrumbs ol { display: flex; flex-wrap: wrap; list-style: none; gap: 0.5rem; }
+    .breadcrumbs li { display: flex; align-items: center; gap: 0.5rem; color: var(--text3); }
+    .breadcrumbs li::before { content: "/"; color: var(--border2); }
+    .breadcrumbs li:first-child::before { display: none; }
+    .breadcrumbs a { color: var(--text2); }
+    .breadcrumbs a:hover { color: var(--link-hover); }
+    .breadcrumbs [aria-current="page"] { color: var(--text); font-weight: 600; }
+
+    /* --- HEADER STYLES --- */
+    .page-header { margin-bottom: 3rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+    .page-title { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
+    .page-subtitle { font-size: 1.15rem; color: var(--text2); }
+
+    /* --- CHAT MESSAGE STYLES --- */
+    .chat-container { display: flex; flex-direction: column; gap: 1rem; }
+    .chat-msg {
+      padding: 1.25rem; border-radius: var(--radius-md);
+      border: 1px solid; position: relative;
+    }
+    .chat-role {
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; margin-bottom: 0.5rem;
+    }
+    
+    /* System Message */
+    .chat-msg.system { background: var(--sys-bg); border-color: var(--sys-border); color: var(--sys-text); }
+    .chat-msg.system .chat-role { color: var(--sys-text); }
+    
+    /* User Message */
+    .chat-msg.user { background: var(--user-bg); border-color: var(--user-border); color: var(--user-text); }
+    .chat-msg.user .chat-role { color: var(--user-label); }
+    
+    /* Assistant Message */
+    .chat-msg.assistant { background: var(--asst-bg); border-color: var(--asst-border); color: var(--asst-text); }
+    .chat-msg.assistant .chat-role { color: var(--asst-label); }
+
+    /* Footer */
+    .page-footer { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border); text-align: center; color: var(--text3); font-size: 0.9rem; }
+    
+    /* =========================================
+       STANDARD LISTS (For general text/content)
+       ========================================= */
+    .content-section ul,
+    .content-section ol {
+      margin-top: 1rem;
+      margin-bottom: 1.5rem;
+      padding-left: 1.5rem;
+    }
+
+    .content-section li {
+      margin-bottom: 0.5rem;
+      color: var(--text);
+    }
+
+    /* Removes margin from the last item so it doesn't mess up section spacing */
+    .content-section li:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Custom bullet color */
+    .content-section ul ::marker {
+      color: var(--text3);
+    }
+
+    /* Custom number style for ordered lists */
+    .content-section ol ::marker {
+      color: var(--text2);
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+      font-weight: 600;
+    }
+
+
+    /* =========================================
+       FILE/DATASET LISTS (Interactive, fancier)
+       ========================================= */
+    .file-list {
+      list-style: none; /* Removes default bullets */
+      padding: 0;
+      margin: 1rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .file-list li {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      transition: all 0.2s ease-in-out;
+    }
+
+    .file-list li:hover {
+      background: var(--surface2);
+      border-color: var(--border2);
+    }
+
+    .file-list a {
+      display: flex;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      color: var(--text);
+      font-weight: 500;
+      text-decoration: none; /* Removes standard underline */
+    }
+
+    /* The arrow icon before the text */
+    .file-list a::before {
+      content: "📄"; /* You can change this to an SVG or arrow like "→" */
+      margin-right: 0.75rem;
+      font-size: 1.1em;
+      opacity: 0.7;
+    }
+
+    .file-list a:hover {
+      color: var(--link-hover);
+    }
+
+    /* Optional subtext (e.g. file size) inside the list item */
+    .file-list .file-meta {
+      margin-left: auto; /* Pushes meta text to the far right */
+      font-size: 0.85em;
+      color: var(--text3);
+      font-family: var(--font-mono);
+    }
+      
+      /* --- SUBSECTION TITLE (H3) --- */
+      .subsection-title {
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-top: 1.75rem; /* Pushes down from the previous paragraph */
+        margin-bottom: 0.75rem;
+        line-height: 1.4;
+      }
+
+      /* --- MINOR TITLE (H4) --- */
+      .minor-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text2);
+        text-transform: uppercase; /* Makes it distinct from standard bold text */
+        letter-spacing: 0.05em;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      /* Optional: If a heading is the very first thing in a container,
+         remove its top margin so it doesn't create unwanted empty space */
+      .subsection-title:first-child,
+      .minor-title:first-child {
+        margin-top: 0;
+      }
+
+      /* Optional: Style bare h3/h4 tags inside content sections
+         just in case you forget to add the classes */
+      .content-section h3 {
+        @extend .subsection-title; /* (Conceptual - use the rule below in plain CSS) */
+      }
+      .content-section h3 { font-size: 1.15rem; font-weight: 600; margin-top: 1.75rem; margin-bottom: 0.75rem; }
+      .content-section h4 { font-size: 0.85rem; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- Navigation Breadcrumbs -->
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="index.html#available-datasets">Datasets</a></li>
+        <li><span aria-current="page">Synthetic Chats</span></li>
+      </ol>
+    </nav>
+
+    <!-- Header -->
+    <header class="page-header">
+      <h1 class="page-title">synthetic chats</h1>
+      <p class="page-subtitle">AI-generated conversations to teach LLMs how to reason about 4D database logic</p>
+    </header>
+
+    <main>
+      
+      <!-- Explanation Section -->
+      <section class="content-section">
+        <h2 class="section-title">About this dataset</h2>
+        <p>This dataset contains thousands of simulated conversations between a human developer and an AI assistant.</p>
+        <h3 class="subsection-title">Used models</h3>
+        <ul><li><code>grok-4-1-fast-reasoning</code> by <strong>xAI</strong></li>
+            <li><code>gpt-5-mini</code> by <strong>OpenAI</strong></li>
+            <li><code>claude-haiku-4-5</code> by <strong>Anthropic</strong></li>
+            <li><code>command-a-03-2025</code> by <strong>Cohere</strong></li>
+            <li><code>qwen3p6-plus</code> by <strong>Alibaba</strong> on FireWorks</li>
+            <li><code>kimi-k2.5</code> by <strong>Moonshot</strong></li>
+        </ul>
+        
+      </section>
+
+      <!-- Chat Example Section -->
+      <section class="content-section">
+        <h2 class="section-title">Data Example</h2>
+        <p style="margin-bottom: 1.5rem; color: var(--text2);">A visual representation of a single entry in the JSONL dataset:</p>
+        
+        <div class="chat-container">
+          
+          <div class="chat-msg user">
+            <div class="chat-role">User</div>
+            <div>How do I rewrite this old query using ORDA?<br><code>QUERY([Invoices];[Invoices]Status="Unpaid")</code></div>
+          </div>
+
+          <div class="chat-msg assistant">
+            <div class="chat-role">Assistant</div>
+            <div>You can query the dataclass directly using the <code>query()</code> function. Here is the modern ORDA equivalent:<br><br>
+            <code>$unpaidInvoices := ds.Invoices.query("Status = :1"; "Unpaid")</code><br><br>
+            This returns an entity selection containing all unpaid invoices, which is much safer and easier to pass around your application than traditional selections.</div>
+          </div>
+
+        </div>
+      </section>
+      
+      <!-- Explanation for System Prompt -->
+      <section class="content-section">
+        <h2 class="section-title">System Prompt</h2>
+        <p style="margin-bottom: 1.5rem; color: var(--text2);">All instructions are predicated by the same system prompt:</p>
+                
+        <div class="chat-container">
+            <div class="chat-msg system">
+              <div class="chat-role">System</div>
+              <div>You are expected to create fine-tuning dataset for a custom programming language called 4D.
+                  
+                  It strictly ONLY has these commands:<br><br>
+                  <code>["ZIP Read archive","ZIP Create archive",…,"Activated","Action info","Abs"]</code><br><br>
+                  It strictly ONLY has these keywords:<br><br>
+                  <code>["ZIP Without enclosing folder","ZIP Ignore invisible files",…,"4D Client Web license","4D Client SOAP license","4D Client database folder"]</code><br><br>
+                  In addition it has these control keywords:<br><br>
+                  <code>try, "end try", use, "end use", "begin sql", "end sql", "case of", "end case", repeat, until, while, "end while",
+                      "end for each", for, "end for", "for each", if, else. "end if", catch, return, break, continue</code><br><br>
+                  In addition it has these legacy reserved keywords, also known as "system variables" which are odetritus from earlier versions and rarely used today:<br><br>
+                  <code>FldDelimit, RecDelimit, Error, "Error method", "Error line", MouseDown、MouseX、MouseY、KeyCode、Modifiers, MouseProc</code><br><br>
+                  Do NOT fence your response with ```json and ```.<br><br>
+                  Generate strict JSON without any additional comments or annotation.
+              </div>
+            </div>
+        </div>
+        
+        <br>
+        <p style="margin-bottom: 1.5rem; color: var(--text2);">The instruction &quot;Do not include any of the following or similar cases&quot; is added at the end of each prompt followed by  results from earlier calls.</p>
+        
+      </section>
+      
+      <!-- Explanation for rewrite -->
+      <section class="content-section">
+        <h2 class="section-title">Rewrite</h2>
+        <p style="margin-bottom: 1.5rem; color: var(--text2);">The <strong>rewrite</strong> subset was generated using the following user prompt:</p>
+        
+        <div class="chat-container">
+            <div class="chat-msg user">
+              <div class="chat-role">User</div>
+              <div>Generate 20 JSONL rows in ChatML format. Each row contains broken code with a subtle bug (wrong operator, off-by-one, scoping issue, type mismatch). The user pastes the code and describes unexpected behaviour. The assistant identifies the exact bug, explains why it fails, and provides the corrected version using only valid commands.</div>
+            </div>
+        </div>
+      </section>
+      
+      <!-- Explanation for critique -->
+      <section class="content-section">
+        <h2 class="section-title">Critique</h2>
+        <p style="margin-bottom: 1.5rem; color: var(--text2);">The <strong>critique</strong> subset was generated using the following user prompt:</p>
+        
+        <div class="chat-container">
+            <div class="chat-msg user">
+              <div class="chat-role">User</div>
+              <div>Generate 20 JSONL rows in ChatML format. The user shares code and asks "is there a better way to do this?". The assistant critiques it across readability, performance, and correctness — praising what's good, flagging what's improvable, and offering a revised version.</div>
+            </div>
+        </div>
+      </section>
+
+      <!-- Explanation for diagnosis -->
+      <section class="content-section">
+        <h2 class="section-title">Diagnosis</h2>
+        <p style="margin-bottom: 1.5rem; color: var(--text2);">The <strong>diagnosis</strong> subset was generated using the following user prompt:</p>
+        
+        <div class="chat-container">
+            <div class="chat-msg user">
+              <div class="chat-role">User</div>
+              <div>Generate 20 JSONL rows in ChatML format. Each row contains broken code with a subtle bug (wrong operator, off-by-one, scoping issue, type mismatch). The user pastes the code and describes unexpected behaviour. The assistant identifies the exact bug, explains why it fails, and provides the corrected version using only valid commands.</div>
+            </div>
+        </div>
+      </section>
+      
+      <!-- Explanation for edge -->
+      <section class="content-section">
+        <h2 class="section-title">Edge</h2>
+        <p style="margin-bottom: 1.5rem; color: var(--text2);">The <strong>edge</strong> subset was generated using the following user prompt:</p>
+        
+        <div class="chat-container">
+            <div class="chat-msg user">
+              <div class="chat-role">User</div>
+              <div>Generate 20 JSONL rows in ChatML format where users ask about edge cases:
+                  empty inputs, null/undefined values, integer overflow, empty collections, and off-by-one scenarios. The assistant must handle each gracefully using only valid language constructs, explicitly noting any edge case being addressed.</div>
+            </div>
+        </div>
+      </section>
+      
+      <!-- Explanation for yesno -->
+      <section class="content-section">
+        <h2 class="section-title">Yes/No</h2>
+        <p style="margin-bottom: 1.5rem; color: var(--text2);">The <strong>yesno</strong> subset was generated using the following user prompt:</p>
+        
+        <div class="chat-container">
+            <div class="chat-msg user">
+              <div class="chat-role">User</div>
+              <div>Generate 20 JSONL rows in ChatML format. Users ask yes/no capability questions ("Does this language support closures?", "Can I do multiple return values?"). Half the answers are yes with a short example. Half are no, with an explanation of the limitation and the standard workaround pattern.</div>
+            </div>
+        </div>
+      </section>
+      
+      <!-- Explanation for multi -->
+      <section class="content-section">
+        <h2 class="section-title">Multi</h2>
+        <p style="margin-bottom: 1.5rem; color: var(--text2);">The <strong>multi</strong> subset was generated using the following user prompt:</p>
+        
+        <div class="chat-container">
+            <div class="chat-msg user">
+              <div class="chat-role">User</div>
+              <div>Generate 20 JSONL rows in ChatML format. Each user message describes a moderately complex task in plain English (e.g. "read a file, filter lines containing a keyword, write results to a new file"). The assistant breaks it into steps, then provides a complete working solution, with inline comments on
+                  non-obvious parts.</div>
+            </div>
+        </div>
+      </section>
+      
+      <!-- Explanation for keywords -->
+      <section class="content-section">
+        <h2 class="section-title">Keywords</h2>
+        <p style="margin-bottom: 1.5rem; color: var(--text2);">The <strong>keywords</strong> subset was generated using the following user prompt:</p>
+        
+        <div class="chat-container">
+            <div class="chat-msg user">
+              <div class="chat-role">User</div>
+              <div>Generate 20 JSONL rows in ChatML format. Half of the rows should be users asking for standard logic, and the assistant responding with valid code. The remaining half of the rows must be 'trap' prompts: The user asks for functionality that requires a command that does not exist in this language like "WEB Get" or "PRINT" or "EXECUTE COMMAND". Do not mix other languages such as JavaScript, PHP, SQL with 4D. The assistant must explicitly state the command doesn't exist, and provide a workaround using ONLY the allowed commands.</div>
+            </div>
+        </div>
+      </section>
+            
+    </main>
+
+    <footer class="page-footer">
+      <p>Open source project hosted on <a href="#">GitHub</a>.</p>
+    </footer>
+
+  </div>
+
+</body>
+</html>
