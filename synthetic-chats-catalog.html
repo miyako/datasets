@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>synthetic chats catalog| 4D LLM Training</title>
+  
+  <style>
+    /* --- COLOR VARIABLES (Same as index) --- */
+    :root {
+      --bg: #f9f8f6; --bg-alpha: rgba(249, 248, 246, 0.85);
+      --surface: #ffffff; --surface2: #f1efe8;
+      --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+      --text: #1a1a18; --text2: #5f5e5a; --text3: #888780;
+      --radius-md: 8px; --radius-lg: 12px;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --font-mono: "SF Mono", "Cascadia Code", "Fira Code", monospace;
+      
+      /* Chat Colors */
+      --user-bg: #E6F1FB; --user-text: #042C53; --user-border: #B5D4F4; --user-label: #185FA5;
+      --asst-bg: #EEEDFE; --asst-text: #26215C; --asst-border: #CECBF6; --asst-label: #3C3489;
+      --sys-bg: #F1EFE8; --sys-text: #5f5e5a; --sys-border: rgba(0,0,0,0.15);
+      --tool-bg: #E1F5EE; --tool-text: #04342C; --tool-border: #9FE1CB; --tool-label: #0F6E56;
+      --danger-bg: #FCEBEB; --danger-text: #A32D2D;
+
+      /* Links */
+      --link: #185FA5;
+      --link-hover: #0C447C;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a18; --bg-alpha: rgba(26, 26, 24, 0.85);
+        --surface: #242422; --surface2: #2c2c2a;
+        --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+        --text: #f0ede8; --text2: #b4b2a9; --text3: #888780;
+        
+        /* Chat Colors Dark Mode */
+        --user-bg: #0C447C; --user-text: #E6F1FB; --user-border: #185FA5; --user-label: #85B7EB;
+        --asst-bg: #26215C; --asst-text: #EEEDFE; --asst-border: #534AB7; --asst-label: #AFA9EC;
+        --sys-bg: #2c2c2a; --sys-text: #888780; --sys-border: rgba(255,255,255,0.1);
+        --tool-bg: #04342C; --tool-text: #E1F5EE; --tool-border: #1D9E75; --tool-label: #5DCAA5;
+        --danger-bg: #3d1a1a; --danger-text: #f09595;
+
+        /* Links Dark Mode */
+        --link: #85B7EB;
+        --link-hover: #B5D4F4;
+      }
+    }
+
+    /* --- BASE STYLES --- */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: var(--bg); color: var(--text);
+      font-family: var(--font-sans); font-size: 15px;
+      line-height: 1.6; min-height: 100vh; scroll-behavior: smooth;
+    }
+    a { color: var(--link); text-decoration: none; transition: color 0.2s; }
+    a:hover, a:focus { color: var(--link-hover); text-decoration: underline; }
+    code { font-family: var(--font-mono); font-size: 0.9em; padding: 0.1em 0.3em; background: rgba(128,128,128,0.15); border-radius: 4px; }
+
+    /* --- LAYOUT STYLES --- */
+    .container { max-width: 800px; margin: 0 auto; padding: 2rem 2rem 4rem 2rem; }
+    
+    main { display: flex; flex-direction: column; gap: 2rem; }
+    
+    .content-section {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 2rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    }
+    .section-title {
+      font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;
+      padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);
+    }
+
+    /* --- BREADCRUMBS STYLES --- */
+    .breadcrumbs {
+      margin-bottom: 2rem;
+      font-size: 0.95rem;
+    }
+    .breadcrumbs ol { display: flex; flex-wrap: wrap; list-style: none; gap: 0.5rem; }
+    .breadcrumbs li { display: flex; align-items: center; gap: 0.5rem; color: var(--text3); }
+    .breadcrumbs li::before { content: "/"; color: var(--border2); }
+    .breadcrumbs li:first-child::before { display: none; }
+    .breadcrumbs a { color: var(--text2); }
+    .breadcrumbs a:hover { color: var(--link-hover); }
+    .breadcrumbs [aria-current="page"] { color: var(--text); font-weight: 600; }
+
+    /* --- HEADER STYLES --- */
+    .page-header { margin-bottom: 3rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+    .page-title { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
+    .page-subtitle { font-size: 1.15rem; color: var(--text2); }
+
+    /* --- CHAT MESSAGE STYLES --- */
+    .chat-container { display: flex; flex-direction: column; gap: 1rem; }
+    .chat-msg {
+      padding: 1.25rem; border-radius: var(--radius-md);
+      border: 1px solid; position: relative;
+    }
+    .chat-role {
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; margin-bottom: 0.5rem;
+    }
+    
+    /* System Message */
+    .chat-msg.system { background: var(--sys-bg); border-color: var(--sys-border); color: var(--sys-text); }
+    .chat-msg.system .chat-role { color: var(--sys-text); }
+    
+    /* User Message */
+    .chat-msg.user { background: var(--user-bg); border-color: var(--user-border); color: var(--user-text); }
+    .chat-msg.user .chat-role { color: var(--user-label); }
+    
+    /* Assistant Message */
+    .chat-msg.assistant { background: var(--asst-bg); border-color: var(--asst-border); color: var(--asst-text); }
+    .chat-msg.assistant .chat-role { color: var(--asst-label); }
+
+    /* Footer */
+    .page-footer { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border); text-align: center; color: var(--text3); font-size: 0.9rem; }
+    
+    /* =========================================
+       STANDARD LISTS (For general text/content)
+       ========================================= */
+    .content-section ul,
+    .content-section ol {
+      margin-top: 1rem;
+      margin-bottom: 1.5rem;
+      padding-left: 1.5rem;
+    }
+
+    .content-section li {
+      margin-bottom: 0.5rem;
+      color: var(--text);
+    }
+
+    /* Removes margin from the last item so it doesn't mess up section spacing */
+    .content-section li:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Custom bullet color */
+    .content-section ul ::marker {
+      color: var(--text3);
+    }
+
+    /* Custom number style for ordered lists */
+    .content-section ol ::marker {
+      color: var(--text2);
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+      font-weight: 600;
+    }
+
+
+    /* =========================================
+       FILE/DATASET LISTS (Interactive, fancier)
+       ========================================= */
+    .file-list {
+      list-style: none; /* Removes default bullets */
+      padding: 0;
+      margin: 1rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .file-list li {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      transition: all 0.2s ease-in-out;
+    }
+
+    .file-list li:hover {
+      background: var(--surface2);
+      border-color: var(--border2);
+    }
+
+    .file-list a {
+      display: flex;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      color: var(--text);
+      font-weight: 500;
+      text-decoration: none; /* Removes standard underline */
+    }
+
+    /* The arrow icon before the text */
+    .file-list a::before {
+      content: "📄"; /* You can change this to an SVG or arrow like "→" */
+      margin-right: 0.75rem;
+      font-size: 1.1em;
+      opacity: 0.7;
+    }
+
+    .file-list a:hover {
+      color: var(--link-hover);
+    }
+
+    /* Optional subtext (e.g. file size) inside the list item */
+    .file-list .file-meta {
+      margin-left: auto; /* Pushes meta text to the far right */
+      font-size: 0.85em;
+      color: var(--text3);
+      font-family: var(--font-mono);
+    }
+      
+      /* --- SUBSECTION TITLE (H3) --- */
+      .subsection-title {
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-top: 1.75rem; /* Pushes down from the previous paragraph */
+        margin-bottom: 0.75rem;
+        line-height: 1.4;
+      }
+
+      /* --- MINOR TITLE (H4) --- */
+      .minor-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text2);
+        text-transform: uppercase; /* Makes it distinct from standard bold text */
+        letter-spacing: 0.05em;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      /* Optional: If a heading is the very first thing in a container,
+         remove its top margin so it doesn't create unwanted empty space */
+      .subsection-title:first-child,
+      .minor-title:first-child {
+        margin-top: 0;
+      }
+
+      /* Optional: Style bare h3/h4 tags inside content sections
+         just in case you forget to add the classes */
+      .content-section h3 {
+        @extend .subsection-title; /* (Conceptual - use the rule below in plain CSS) */
+      }
+      .content-section h3 { font-size: 1.15rem; font-weight: 600; margin-top: 1.75rem; margin-bottom: 0.75rem; }
+      .content-section h4 { font-size: 0.85rem; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- Navigation Breadcrumbs -->
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="index.html#available-datasets">Datasets</a></li>
+        <li><span aria-current="page">Synthetic Chats for Catalog</span></li>
+      </ol>
+    </nav>
+
+    <!-- Header -->
+    <header class="page-header">
+      <h1 class="page-title">synthetic chats for catalog</h1>
+      <p class="page-subtitle">AI-generated conversations to teach LLMs how to reason about 4D database schema</p>
+    </header>
+
+    <main>
+      
+      <!-- Explanation Section -->
+      <section class="content-section">
+        <h2 class="section-title">About this dataset</h2>
+        <p>This dataset contains thousands of simulated conversations between a human developer and an AI assistant.</p>
+        <h3 class="subsection-title">Used models</h3>
+        <ul><li><code>claude-opus-4-7</code> by <strong>Anthropic</strong></li>
+        </ul>
+        
+      </section>
+      
+      <!-- Explanation for System Prompt -->
+      <section class="content-section">
+        <h2 class="section-title">System Prompt</h2>
+        <p style="margin-bottom: 1.5rem; color: var(--text2);">All instructions are predicated by the same system prompt:</p>
+                
+        <div class="chat-container">
+            <div class="chat-msg system">
+              <div class="chat-role">System</div>
+              <div>You are expected to create fine-tuning dataset for the relational database management system known as "4D".<br><br>
+                  
+                  ## specification<br><br>
+
+                  The database schema definition, known as &quot;catalog&quot;, is an XML document with the proprietary file name and extension &quot;catalog.4DCatalog&quot;.<br><br>
+
+                  The DTD for this document is as follows:<br><br>
+                  <code>// content of base_core.dtd</code><br><br>
+                  
+                  When tasked to generate a database schema, you are expected to generate XML that strictly conforms to this DTD.<br><br>
+                  
+                  ## Comparison with SQL<br><br>
+
+                  Here is a simple conversion between an SQL database definition and a 4D database definition:<br><br>
+                  <code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+                      &lt;!DOCTYPE base SYSTEM &quot;http://www.4d.com/dtd/2007/base.dtd&quot; &gt;
+                      &lt;base name=&quot;database&quot; uuid=&quot;B1F34E4F9A5C48EBA7B1790CA9824607&quot; collation_locale=&quot;en-gb&quot;&gt;
+                          &lt;schema name=&quot;DEFAULT_SCHEMA&quot;/&gt;
+                          &lt;table name=&quot;Company&quot; uuid=&quot;0337133A02304523819D571AF6363069&quot; id=&quot;1&quot;&gt;
+                              &lt;field name=&quot;ID&quot; uuid=&quot;0CDFBD49FAA44D6094CF38A572AAAFE9&quot; type=&quot;4&quot; unique=&quot;true&quot; autosequence=&quot;true&quot; not_null=&quot;true&quot; id=&quot;1&quot;/&gt;
+                              &lt;field name=&quot;name&quot; uuid=&quot;6D2772D0485B41DFB3FDFE204002B1D7&quot; type=&quot;10&quot; limiting_length=&quot;255&quot; id=&quot;2&quot;/&gt;
+                              &lt;field name=&quot;notes&quot; uuid=&quot;6641C9A3E2BF46CC86E02DB2F6A7F220&quot; type=&quot;10&quot; id=&quot;3&quot;/&gt;
+                              &lt;field name=&quot;founded&quot; uuid=&quot;0BDF503599494CE88A0104191EAB4163&quot; type=&quot;8&quot; id=&quot;4&quot;/&gt;
+                              &lt;field name=&quot;active&quot; uuid=&quot;069BC3B990AF42F08BD106222A121C3C&quot; type=&quot;1&quot; id=&quot;6&quot;/&gt;
+                              &lt;field name=&quot;kind&quot; uuid=&quot;BD3DE7C009394D2D92BDD3C547EEAC3B&quot; type=&quot;3&quot; id=&quot;7&quot;/&gt;
+                              &lt;field name=&quot;gpsLat&quot; uuid=&quot;9B4158FA6C744B8A97264F187E119C17&quot; type=&quot;6&quot; id=&quot;8&quot;/&gt;
+                              &lt;field name=&quot;gpsLng&quot; uuid=&quot;3CD80E38C83049F48BAABE1F2C1B7340&quot; type=&quot;6&quot; id=&quot;10&quot;/&gt;
+                              &lt;field name=&quot;misc&quot; uuid=&quot;F7EF76C35AB949E1B6A1FDAFA57F88C4&quot; type=&quot;18&quot; id=&quot;11&quot;/&gt;
+                              &lt;field name=&quot;photo&quot; uuid=&quot;4C800AA2C26249038F2F8DAABFF314E4&quot; type=&quot;12&quot; id=&quot;12&quot;/&gt;
+                              &lt;field name=&quot;data&quot; uuid=&quot;2BA9C3BCD4C54E42A49BF09A8BE292F2&quot; type=&quot;21&quot; blob_switch_size=&quot;2147483647&quot; id=&quot;13&quot;/&gt;
+                              &lt;primary_key field_name=&quot;ID&quot; field_uuid=&quot;0CDFBD49FAA44D6094CF38A572AAAFE9&quot;/&gt;
+                          &lt;/table&gt;
+                          &lt;table name=&quot;Employee&quot; uuid=&quot;D98066930B63447BB0D4D6C940AD8004&quot; id=&quot;2&quot;&gt;
+                              &lt;field name=&quot;ID&quot; uuid=&quot;EE151A7F08A34E098EBF8FFB93609C24&quot; type=&quot;4&quot; unique=&quot;true&quot; autosequence=&quot;true&quot; not_null=&quot;true&quot; id=&quot;1&quot;/&gt;
+                              &lt;field name=&quot;company&quot; uuid=&quot;1DD3A33FFC394F05BF77A31BA3FF28CC&quot; type=&quot;4&quot; id=&quot;2&quot;/&gt;
+                              &lt;field name=&quot;firstName&quot; uuid=&quot;68C448CF5FCB497C972644D5735627BC&quot; type=&quot;10&quot; limiting_length=&quot;255&quot; id=&quot;3&quot;/&gt;
+                              &lt;field name=&quot;lastName&quot; uuid=&quot;FD2B353A9C634480B9F7FFC51E892C8F&quot; type=&quot;10&quot; limiting_length=&quot;255&quot; id=&quot;4&quot;/&gt;
+                              &lt;field name=&quot;hired&quot; uuid=&quot;E4EA01518B8E473B8EDC6BCC93600569&quot; type=&quot;8&quot; id=&quot;5&quot;/&gt;
+                              &lt;field name=&quot;active&quot; uuid=&quot;B0E92A4EC7694D46AD87C89E14AF4249&quot; type=&quot;1&quot; id=&quot;7&quot;/&gt;
+                              &lt;field name=&quot;rank&quot; uuid=&quot;76F017785CD443B4987CFA8588C9925F&quot; type=&quot;3&quot; id=&quot;8&quot;/&gt;
+                              &lt;field name=&quot;phone&quot; uuid=&quot;DB39093A3F2144579A3EF7858E6116F8&quot; type=&quot;10&quot; limiting_length=&quot;255&quot; id=&quot;9&quot;/&gt;
+                              &lt;field name=&quot;email&quot; uuid=&quot;8AFD115AE5E84ED394AD8BCCBB2F5D5F&quot; type=&quot;10&quot; limiting_length=&quot;255&quot; id=&quot;10&quot;/&gt;
+                              &lt;field name=&quot;address&quot; uuid=&quot;E05B59B3E26D4EDE8B48B3855C049644&quot; type=&quot;10&quot; limiting_length=&quot;255&quot; id=&quot;11&quot;/&gt;
+                              &lt;field name=&quot;photo&quot; uuid=&quot;761A0092C5EE4849905E08E246943D47&quot; type=&quot;12&quot; id=&quot;13&quot;/&gt;
+                              &lt;field name=&quot;notes&quot; uuid=&quot;041DAA511CBD46E6BE0557A9048D8FAA&quot; type=&quot;10&quot; id=&quot;16&quot;/&gt;
+                              &lt;primary_key field_name=&quot;ID&quot; field_uuid=&quot;EE151A7F08A34E098EBF8FFB93609C24&quot;/&gt;
+                          &lt;/table&gt;
+                          &lt;table name=&quot;Product&quot; uuid=&quot;B0F3146088B94274880E4B70138C441C&quot; id=&quot;3&quot;&gt;
+                              &lt;field name=&quot;ID&quot; uuid=&quot;7FCC9A048CA74CB3B7820189D16EFF8B&quot; type=&quot;4&quot; unique=&quot;true&quot; autosequence=&quot;true&quot; not_null=&quot;true&quot; id=&quot;1&quot;/&gt;
+                              &lt;field name=&quot;name&quot; uuid=&quot;1448800D2C99403B98806AA3CA63429D&quot; type=&quot;10&quot; limiting_length=&quot;255&quot; id=&quot;2&quot;/&gt;
+                              &lt;field name=&quot;price&quot; uuid=&quot;8B474772F22549B2AB8F166FD4B458B2&quot; type=&quot;4&quot; id=&quot;3&quot;/&gt;
+                              &lt;field name=&quot;kind&quot; uuid=&quot;ED8BA8C9120A4545B9D5039074913908&quot; type=&quot;3&quot; id=&quot;4&quot;/&gt;
+                              &lt;field name=&quot;photo&quot; uuid=&quot;FC8857C4374543E9AA1280B3788503B5&quot; type=&quot;12&quot; id=&quot;5&quot;/&gt;
+                              &lt;field name=&quot;margin&quot; uuid=&quot;F2D1636E44524338AD48FEE304558BFA&quot; type=&quot;6&quot; id=&quot;6&quot;/&gt;
+                              &lt;field name=&quot;pdf&quot; uuid=&quot;02FEDBBA39EF439D97E44605AADE9CE3&quot; type=&quot;18&quot; id=&quot;7&quot;/&gt;
+                              &lt;field name=&quot;embeddings&quot; uuid=&quot;B32D8983504E42F6B27D730FBAAD8316&quot; type=&quot;21&quot; blob_switch_size=&quot;2147483647&quot; id=&quot;8&quot;&gt;
+                                  &lt;field_extra class_id=&quot;4D.Vector&quot;/&gt;
+                              &lt;/field&gt;
+                              &lt;field name=&quot;company&quot; uuid=&quot;6E15BC8EFEC44EE0996EF867AE2AF709&quot; type=&quot;4&quot; id=&quot;9&quot;/&gt;
+                              &lt;field name=&quot;releaseDate&quot; uuid=&quot;39E87E17D2F0415882068C9E22D0BAA6&quot; type=&quot;8&quot; id=&quot;10&quot;/&gt;
+                              &lt;field name=&quot;releaseTime&quot; uuid=&quot;E6B0C5BD9D7C4728B15325769F2BCE27&quot; type=&quot;9&quot; id=&quot;11&quot;/&gt;
+                              &lt;field name=&quot;description&quot; uuid=&quot;1FF74E02C6E2434091EFF08925024F05&quot; type=&quot;10&quot; id=&quot;12&quot;/&gt;
+                              &lt;primary_key field_name=&quot;ID&quot; field_uuid=&quot;7FCC9A048CA74CB3B7820189D16EFF8B&quot;/&gt;
+                          &lt;/table&gt;
+                          &lt;relation uuid=&quot;13758B929AB44DA4A0BC67FA25B537C6&quot; name_Nto1=&quot;company&quot; name_1toN=&quot;employees&quot; state=&quot;1&quot;&gt;
+                              &lt;related_field kind=&quot;source&quot;&gt;
+                                  &lt;field_ref uuid=&quot;1DD3A33FFC394F05BF77A31BA3FF28CC&quot; name=&quot;company&quot;&gt;
+                                      &lt;table_ref uuid=&quot;D98066930B63447BB0D4D6C940AD8004&quot; name=&quot;Employee&quot;/&gt;
+                                  &lt;/field_ref&gt;
+                              &lt;/related_field&gt;
+                              &lt;related_field kind=&quot;destination&quot;&gt;
+                                  &lt;field_ref uuid=&quot;0CDFBD49FAA44D6094CF38A572AAAFE9&quot; name=&quot;ID&quot;&gt;
+                                      &lt;table_ref uuid=&quot;0337133A02304523819D571AF6363069&quot; name=&quot;Company&quot;/&gt;
+                                  &lt;/field_ref&gt;
+                              &lt;/related_field&gt;
+                          &lt;/relation&gt;
+                          &lt;relation uuid=&quot;6F14615E3E5A4AA28436374D30264D37&quot; name_Nto1=&quot;products&quot; name_1toN=&quot;company&quot; state=&quot;1&quot;&gt;
+                              &lt;related_field kind=&quot;source&quot;&gt;
+                                  &lt;field_ref uuid=&quot;6E15BC8EFEC44EE0996EF867AE2AF709&quot; name=&quot;company&quot;&gt;
+                                      &lt;table_ref uuid=&quot;B0F3146088B94274880E4B70138C441C&quot; name=&quot;Product&quot;/&gt;
+                                  &lt;/field_ref&gt;
+                              &lt;/related_field&gt;
+                              &lt;related_field kind=&quot;destination&quot;&gt;
+                                  &lt;field_ref uuid=&quot;0CDFBD49FAA44D6094CF38A572AAAFE9&quot; name=&quot;ID&quot;&gt;
+                                      &lt;table_ref uuid=&quot;0337133A02304523819D571AF6363069&quot; name=&quot;Company&quot;/&gt;
+                                  &lt;/field_ref&gt;
+                              &lt;/related_field&gt;
+                          &lt;/relation&gt;
+                          &lt;index kind=&quot;regular&quot; unique_keys=&quot;true&quot; uuid=&quot;87E2501382E4459F86CA66FAE5FA2F90&quot; type=&quot;7&quot;&gt;
+                              &lt;field_ref uuid=&quot;7FCC9A048CA74CB3B7820189D16EFF8B&quot; name=&quot;ID&quot;&gt;
+                                  &lt;table_ref uuid=&quot;B0F3146088B94274880E4B70138C441C&quot; name=&quot;Product&quot;/&gt;
+                              &lt;/field_ref&gt;
+                          &lt;/index&gt;
+                          &lt;index kind=&quot;regular&quot; unique_keys=&quot;true&quot; uuid=&quot;D74BBFDA5D844A40973F54BB302E51C2&quot; type=&quot;7&quot;&gt;
+                              &lt;field_ref uuid=&quot;EE151A7F08A34E098EBF8FFB93609C24&quot; name=&quot;ID&quot;&gt;
+                                  &lt;table_ref uuid=&quot;D98066930B63447BB0D4D6C940AD8004&quot; name=&quot;Employee&quot;/&gt;
+                              &lt;/field_ref&gt;
+                          &lt;/index&gt;
+                          &lt;index kind=&quot;regular&quot; unique_keys=&quot;true&quot; uuid=&quot;E013F0218B51415792ABD5DBA3538148&quot; type=&quot;7&quot;&gt;
+                              &lt;field_ref uuid=&quot;0CDFBD49FAA44D6094CF38A572AAAFE9&quot; name=&quot;ID&quot;&gt;
+                                  &lt;table_ref uuid=&quot;0337133A02304523819D571AF6363069&quot; name=&quot;Company&quot;/&gt;
+                              &lt;/field_ref&gt;
+                          &lt;/index&gt;
+                          &lt;base_extra&gt;
+                              &lt;journal_file journal_file_enabled=&quot;true&quot;/&gt;
+                          &lt;/base_extra&gt;
+                      &lt;/base&gt;</code><br><br>
+
+                  <code>CREATE TABLE IF NOT EXISTS 'Company' (
+                          'ID' INT AUTO_INCREMENT NOT NULL UNIQUE,
+                          'name' VARCHAR (255),
+                          'notes' TEXT,
+                          'founded' TIMESTAMP,
+                          'countryCode' SMALLINT,
+                          'active' BOOLEAN,
+                          'photo' PICTURE,
+                          'data' TEXT,
+                          PRIMARY KEY ('ID')
+                      );
+
+                      CREATE TABLE IF NOT EXISTS 'Employee' (
+                          'ID' INT AUTO_INCREMENT NOT NULL UNIQUE,
+                          'company' INT,
+                          'firstName' VARCHAR (255),
+                          'lastName' VARCHAR (255),
+                          'hired' TIMESTAMP,
+                          'privateInfo' TEXT,
+                          'active' BOOLEAN,
+                          'rank' SMALLINT,
+                          'phone' VARCHAR (255),
+                          'email' VARCHAR (255),
+                          'address' VARCHAR (255),
+                          'photo' PICTURE,
+                          'notes' TEXT,
+                          PRIMARY KEY ('ID')
+                      );
+
+                      CREATE TABLE IF NOT EXISTS 'Product' (
+                          'ID' INT AUTO_INCREMENT NOT NULL UNIQUE,
+                          'name' VARCHAR (255),
+                          'price' INT,
+                          'categoryID' SMALLINT,
+                          'photo' PICTURE,
+                          'taxRate' REAL,
+                          'dataSheet' BLOB,
+                          'embeddings' TEXT,
+                          'company' INT,
+                          'releaseDate' TIMESTAMP,
+                          'releaseTime' DURATION,
+                          'description' TEXT,
+                          PRIMARY KEY ('ID')
+                      );
+
+                      CREATE INDEX 'id1' ON 'Employee' (
+                          'company'
+                      );
+
+                      CREATE INDEX 'id2' ON 'Company' (
+                          'name'
+                      );
+
+                      CREATE INDEX 'id3' ON 'Product' (
+                          'name'
+                      );
+
+                      CREATE INDEX 'id4' ON 'Company' (
+                          'data'
+                      );
+
+                      CREATE UNIQUE INDEX 'id5' ON 'Product' (
+                          'ID'
+                      );
+
+                      CREATE INDEX 'id6' ON 'Product' (
+                          'company'
+                      );
+
+                      CREATE UNIQUE INDEX 'id7' ON 'Employee' (
+                          'ID'
+                      );
+
+                      CREATE UNIQUE INDEX 'id8' ON 'Company' (
+                          'ID'
+                      );
+                      </code><br><br>
+                  
+                  Use this knowledge to infer a 4D relation database definition.<br><br>
+
+                  Last but not least, name of tables, fields and relations should follow ECMAScript rules and must not exceed 31 characters.<br><br>
+
+                  Use of reserved names, i.e. 4D command names (Date, Time, etc), keywords (If, For, etc.), or constant names (Euro, Black, Friday, etc.) is discouraged.<br><br>
+                  
+                  Here is the list of command names:<br><br>
+                      
+                      [&quot;Variance&quot;, &quot;Uppercase&quot;, &quot;Undefined&quot;, &quot;Type&quot;, &quot;Trunc&quot;, &quot;True&quot;, &quot;Trim&quot;, &quot;Timestamp&quot;, &quot;Time&quot;, &quot;Tickcount&quot;, &quot;throw&quot;, &quot;This&quot;, &quot;Tan&quot;, &quot;Table&quot;, &quot;Super&quot;, &quot;Sum&quot;, &quot;Subtotal&quot;, &quot;Substring&quot;, &quot;String&quot;, &quot;Storage&quot;, &quot;Sin&quot;, &quot;Session&quot;, &quot;Semaphore&quot;, &quot;Self&quot;, &quot;Round&quot;, &quot;Request&quot;, &quot;Random&quot;, &quot;Position&quot;, &quot;Old&quot;, &quot;Num&quot;, &quot;Null&quot;, &quot;Not&quot;, &quot;Modified&quot;, &quot;Mod&quot;, &quot;Min&quot;, &quot;Milliseconds&quot;, &quot;Max&quot;, &quot;Lowercase&quot;, &quot;Log&quot;, &quot;Locked&quot;, &quot;Level&quot;, &quot;Length&quot;, &quot;Keystroke&quot;, &quot;Int&quot;, &quot;Formula&quot;, &quot;Form&quot;, &quot;Folder&quot;, &quot;File&quot;, &quot;Field&quot;, &quot;False&quot;, &quot;Exp&quot;, &quot;ds&quot;, &quot;Dec&quot;, &quot;Deactivated&quot;, &quot;Date&quot;, &quot;cs&quot;, &quot;Cos&quot;, &quot;Clickcount&quot;, &quot;Choose&quot;, &quot;Char&quot;, &quot;Bool&quot;, &quot;Before&quot;, &quot;Average&quot;, &quot;Asserted&quot;, &quot;Arctan&quot;, &quot;After&quot;, &quot;Activated&quot;, &quot;Abs&quot;]<br><br>
+
+                      Here is the list of constant names:<br><br>
+
+                      [&quot;Yellow&quot;, &quot;Windows&quot;, &quot;White&quot;, &quot;Wednesday&quot;, &quot;Version&quot;, &quot;Underline&quot;, &quot;Tuesday&quot;, &quot;Transparency&quot;, &quot;Translate&quot;, &quot;tool4d&quot;, &quot;Thursday&quot;, &quot;Tab&quot;, &quot;System&quot;, &quot;Superimposition&quot;, &quot;Sunday&quot;, &quot;SQL_INTERNAL&quot;, &quot;Space&quot;, &quot;September&quot;, &quot;Scale&quot;, &quot;Saturday&quot;, &quot;ReturnKey&quot;, &quot;Reset&quot;, &quot;Replicated&quot;, &quot;Red&quot;, &quot;Radian&quot;, &quot;Quote&quot;, &quot;Purple&quot;, &quot;Plain&quot;, &quot;Pi&quot;, &quot;Period&quot;, &quot;Paused&quot;, &quot;Orange&quot;, &quot;October&quot;, &quot;November&quot;, &quot;Normal&quot;, &quot;None&quot;, &quot;Monday&quot;, &quot;May&quot;, &quot;MAXTEXTLENBEFOREV11&quot;, &quot;MAXLONG&quot;, &quot;MAXINT&quot;, &quot;March&quot;, &quot;Manual&quot;, &quot;June&quot;, &quot;July&quot;, &quot;January&quot;, &quot;Italic&quot;, &quot;Grey&quot;, &quot;Green&quot;, &quot;Friday&quot;, &quot;Fonts&quot;, &quot;February&quot;, &quot;Executing&quot;, &quot;Euro&quot;, &quot;Escape&quot;, &quot;Enter&quot;, &quot;Encoding&quot;, &quot;Desktop&quot;, &quot;Delayed&quot;, &quot;Degree&quot;, &quot;December&quot;, &quot;Crop&quot;, &quot;Brown&quot;, &quot;Bold&quot;, &quot;Blue&quot;, &quot;Black&quot;, &quot;Backspace&quot;, &quot;Automatic&quot;, &quot;August&quot;, &quot;April&quot;, &quot;Aborted&quot;]<br><br>
+
+                      Here is the list of keyword names:<br><br>
+
+                      try, &quot;end try&quot;, use, &quot;end use&quot;, &quot;begin sql&quot;, &quot;end sql&quot;, &quot;case of&quot;, &quot;end case&quot;, repeat, until, while, &quot;end while&quot;,
+                      &quot;end for each&quot;, for, &quot;end for&quot;, &quot;for each&quot;, if, else. &quot;end if&quot;, catch, return, break, continue <br><br>
+                  
+                  ## Additional Instructions<br><br>
+
+                  - make sure that spaces are not accidentally omitted in the XML document:<br>
+                    - this is good: &quot;name&quot; uuid=&quot;6D2772D0485B41DFB3FDFE204002B1D7&quot;<br>
+                    - this is bad:  &quot;name&quot;uuid=&quot;6D2772D0485B41DFB3FDFE204002B1D7&quot;<br>
+                    - it is very important that the database definition is a valid XML document<br>
+                  - the `comment` element must have a `format=&quot;text&quot;` attribute<br>
+                  - no XML comments are allowed anywhere in the document<br>
+                  - `uuid` and `field_uuid` attribute values must be a string with 32 hexadecimal digits, no more, no less<br>
+                    - you may use the table and field numbers for their `uuid` but their values must never clash with another table or field or relation inside the database (note that the 4D can have up to 32767 tables with 32767 fields each)<br>
+                    - `field_uuid` attribute value of a `primary_key` element must exactly match the `uuid` value of the field element in the document to which it is referring<br>
+                    - `uuid` attribute of `field_ref` or `table_ref` element must exactly match the `uuid` of the table of field element in the document to which it is referring<br>
+
+                  ## Field Types<br><br>
+
+                  The 4D database engine supports the following field types:<br><br>
+
+                  - Date: Date between the year 100 and the year 32,767<br>
+                  - Time: Time or duration in seconds; can be negative value or exceed the equivalent of a single day<br>
+                  - Text: Text up to 2 GB UTF-16 code points<br>
+                  - Alpha: Text between 1 and 255 characters<br>
+                    - Use Alpha to store UTF timestamps if the date and time or timezone is important<br>
+                  - Integer: Number between -32,768 and 32,767<br>
+                    - Long integer: Number between -2,147,483,648 and 2,147,483,647<br>
+                  - Integer 64 bits: Deprecated, do NOT use this<br>
+                  - Real: IEEE 754 double-precision representation<br>
+                    - Used for large monetary values too large for Long integer or decimal values in general<br>
+                    - Integer up to 53 bit, or more exactly,  between &minus;9,007,199,254,740,992 and 9,007,199,254,740,992 will be exactly represented<br>
+                  - BLOB (Binary Large Object): Arbitrary binary data such as documents<br>
+                  - Picture: Photographs or images such as PNG, JPEG, SVG, BMP, TIFF<br>
+                  - Object: Generic objects or an instance of a native class such as 4D.Vector (embeddings) or a user defined class such as cs.MyClassName<br>
+                    - Also used to store JSON key/value pairs<br><br>
+
+                  ## Primary Key<br><br>
+
+                  The primary key of a table can be a single Long integer field or a UUID field.<br><br>
+
+                  - Example of a Long integer primary key:<br><br>
+
+                  <code>&lt;field name=&quot;ID&quot; uuid=&quot;3DB1815EC975454E96B35B178A06E911&quot; type=&quot;4&quot; unique=&quot;true&quot; autosequence=&quot;true&quot; not_null=&quot;true&quot; id=&quot;1&quot;&gt;
+                      &lt;field_extra/&gt;
+                  &lt;/field&gt;
+                  </code>
+
+                  - Example of a UUID primary key:<br><br>
+
+                  <code>&lt;field name=&quot;UUID&quot; uuid=&quot;3DB1815EC975454E96B35B178A06E911&quot; type=&quot;10&quot; limiting_length=&quot;255&quot; unique=&quot;true&quot; autogenerate=&quot;true&quot; store_as_UUID=&quot;true&quot; not_null=&quot;true&quot; id=&quot;1&quot;&gt;
+                      &lt;field_extra/&gt;
+                  &lt;/field&gt;
+                  </code>
+
+                  ## Index<br><br>
+
+                  Fields that are frequently searched may benefit from having an index. For example, you may index a name field or a date field. But setting indexes on fields that are frequently updated but seldomly searched would have a negative impact on performance.<br><br>
+
+                  4D has 3 main types of indexes; B-Tree, Cluster B-Tree, And automatic.<br><br>
+
+                  - B-Tree<br>
+                    - Best suited for fields with high selectivity, where the number of distinct values is close to the total number of records<br>
+                    - Example of a B-Tree index field:<br><br>
+
+                  <code>&lt;table name=&quot;Table_1&quot; uuid=&quot;60973263D00F437E9F406490357C74D2&quot; id=&quot;1&quot; prevent_journaling=&quot;true&quot;&gt;
+                      &lt;field name=&quot;name&quot; uuid=&quot;C4749EDD9A624BC68108EA50F8F5F678&quot; type=&quot;10&quot; limiting_length=&quot;1&quot; id=&quot;2&quot;&gt;
+                          &lt;field_extra/&gt;
+                      &lt;/field&gt;
+                  &lt;/table&gt;
+                  &lt;index kind=&quot;regular&quot; uuid=&quot;DA879FAFF26F460CA900A02EB150800F&quot; type=&quot;1&quot;&gt;
+                      &lt;field_ref uuid=&quot;C4749EDD9A624BC68108EA50F8F5F678&quot; name=&quot;name&quot;&gt;
+                          &lt;table_ref uuid=&quot;60973263D00F437E9F406490357C74D2&quot; name=&quot;Table_1&quot;/&gt;
+                      &lt;/field_ref&gt;
+                  &lt;/index&gt;
+                  </code><br><br>
+
+                  - Cluster B-Tree Index<br>
+                    - Best for fields with low selectivity, meaning the number of distinct values is very low compared to the total number of records<br>
+                    - Example of a Cluster B-Tree index field:<br><br>
+
+                  <code>&lt;table name=&quot;Table_1&quot; uuid=&quot;60973263D00F437E9F406490357C74D2&quot; id=&quot;1&quot; prevent_journaling=&quot;true&quot;&gt;
+                      &lt;field name=&quot;invoiceNumber&quot; uuid=&quot;3C4895F830C64504A8BA1C061FB399FB&quot; type=&quot;10&quot; limiting_length=&quot;255&quot; id=&quot;3&quot;&gt;
+                          &lt;field_extra/&gt;
+                      &lt;/field&gt;
+                  &lt;/table&gt;
+                  &lt;index kind=&quot;regular&quot; uuid=&quot;77C6E60D94AB4A0C9CA6D1EE6BC926AC&quot; type=&quot;3&quot;&gt;
+                      &lt;field_ref uuid=&quot;3C4895F830C64504A8BA1C061FB399FB&quot; name=&quot;invoiceNumber&quot;&gt;
+                          &lt;table_ref uuid=&quot;60973263D00F437E9F406490357C74D2&quot; name=&quot;Table_1&quot;/&gt;
+                      &lt;/field_ref&gt;
+                  &lt;/index&gt;
+                  </code><br><br>
+
+                  - Automatic<br>
+                    - Best for object fields<br>
+                    - Example of an Automatic index field:<br><br>
+
+                    <code>&lt;table name=&quot;Table_1&quot; uuid=&quot;60973263D00F437E9F406490357C74D2&quot; id=&quot;1&quot; prevent_journaling=&quot;true&quot;&gt;
+                      &lt;field name=&quot;details&quot; uuid=&quot;05C83768FF77484DA5B11ED3934C187A&quot; type=&quot;21&quot; blob_switch_size=&quot;2147483647&quot; id=&quot;4&quot;&gt;
+                          &lt;field_extra/&gt;
+                      &lt;/field&gt;
+                  &lt;/table&gt;
+                  &lt;index kind=&quot;regular&quot; uuid=&quot;4E22FE10ADBA442590C4E23D8C4A132D&quot; type=&quot;3&quot;&gt;
+                      &lt;field_ref uuid=&quot;05C83768FF77484DA5B11ED3934C187A&quot; name=&quot;details&quot;&gt;
+                          &lt;table_ref uuid=&quot;60973263D00F437E9F406490357C74D2&quot; name=&quot;Table_1&quot;/&gt;
+                      &lt;/field_ref&gt;
+                  &lt;/index&gt;
+                  </code><br><br>
+
+                  It is recommended to define a Cluster B-Tree index on the Many field and a B-Tree index on the One field of a relation.
+              </div>
+            </div>
+        </div>
+        
+        <br>
+        <p style="margin-bottom: 1.5rem; color: var(--text2);">The instruction &quot;Do not include any of the following or similar cases&quot; is added at the end of each prompt followed by  results from earlier calls.</p>
+        
+      </section>
+      
+      <!-- Explanation for user -->
+      <section class="content-section">
+        <h2 class="section-title">Rewrite</h2>
+        <p style="margin-bottom: 1.5rem; color: var(--text2);">The data was generated using the following user prompt:</p>
+        
+        <div class="chat-container">
+            <div class="chat-msg user">
+              <div class="chat-role">User</div>
+              <div>Generate a JSONL document in ChatML format. The user asks for a database application idea like: "Generate a 4D database definition for a small business that sells vintage candles. The owner is expected to open a physical store but may expand to multiple stores later. They would primarily accept  orders online, possibly from abroad. The application should manage inventory, sales, invoicing, shipping. Depending on market trends they may pivot." You should create a  realistic scenario for the user with a believable story. The assistant replies with a strict XML file without any additional comments or annotation. Do NOT fence your response with ```xml and ``` in the assistant's response. </div>
+            </div>
+        </div>
+      </section>
+            
+    </main>
+
+    <footer class="page-footer">
+      <p>Open source project hosted on <a href="https://miyako.github.io/datasets/">GitHub</a>.</p>
+    </footer>
+
+  </div>
+
+</body>
+</html>
