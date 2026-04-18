@@ -268,8 +268,11 @@
         <h2 class="section-title">About this dataset</h2>
         <p>This dataset contains simulated conversations between a human developer and an AI assistant.</p>
         <h3 class="subsection-title">Used models</h3>
-        <ul><li><code>grok-4-1-fast-reasoning</code> by <strong>xAI</strong></li>
+        <ul><li><code>grok-4-20-reasoning</code> by <strong>xAI</strong></li>
+            <li><code>grok-4-1-fast-reasoning</code> by <strong>xAI</strong></li>
+            <li><code>gpt-5</code> by <strong>OpenAI</strong></li>
             <li><code>gpt-5-mini</code> by <strong>OpenAI</strong></li>
+            <li><code>claude-opus-4-7</code> by <strong>Anthropic</strong></li>
             <li><code>claude-haiku-4-5</code> by <strong>Anthropic</strong></li>
             <li><code>command-a-03-2025</code> by <strong>Cohere</strong></li>
             <li><code>qwen3p6-plus</code> by <strong>Alibaba</strong> on FireWorks</li>
@@ -421,6 +424,30 @@
               <div>Generate 20 JSONL rows in ChatML format. Half of the rows should be users asking for standard logic, and the assistant responding with valid code. The remaining half of the rows must be 'trap' prompts: The user asks for functionality that requires a command that does not exist in this language like "WEB Get" or "PRINT" or "EXECUTE COMMAND". Do not mix other languages such as JavaScript, PHP, SQL with 4D. The assistant must explicitly state the command doesn't exist, and provide a workaround using ONLY the allowed commands.</div>
             </div>
         </div>
+      </section>
+      
+      <!-- Explanation for snippets -->
+      <section class="content-section">
+        <h2 class="section-title">snippets</h2>
+        <p style="margin-bottom: 1.5rem; color: var(--text2);">The <strong>snippets</strong> subset was generated using the following user prompt:</p>
+        
+        <div class="chat-container">
+            <div class="chat-msg user">
+              <div class="chat-role">User</div>
+              <div>Generate a JSON object that describes a computing task and the code in several programming languages. The task should be more than a simple function call, a self-contained multi step procedure up to several hundred lines of code. Every version must be functionally identical in their respective runtime environments. The JSON must have the following fields:<br><br>
+                  
+                  - instruction: a complete sentence that explains what the codes does. It must be written the form of an instruction like "write code that... (describe the task here)...in (the language here)"<br>
+                  - input: &quot;&quot; (not used, must be empty)<br>
+                  - output: &quot;&quot; (will be filled in by your supervisor, must be empty)<br>
+                  - output_py: your code in the &quot;python&quot; language<br>
+                  - output_js: your code in the &quot;javascript&quot; language<br>
+                  - output_4d: your code in the &quot;4D&quot; language</div>
+            </div>
+        </div>
+        
+        <br>
+        <p style="margin-bottom: 1.5rem; color: var(--text2);">The output was used to create 3 tasks: &quot;Convert this javascript code to 4D&quot;, &quot;Convert this python code to 4D&quot;, and the original instruction.</p>
+        
       </section>
             
     </main>
