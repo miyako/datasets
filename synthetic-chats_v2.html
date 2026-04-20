@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>synthetic chats | 4D LLM Training</title>
+  
+  <style>
+    /* --- COLOR VARIABLES (Same as index) --- */
+    :root {
+      --bg: #f9f8f6; --bg-alpha: rgba(249, 248, 246, 0.85);
+      --surface: #ffffff; --surface2: #f1efe8;
+      --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+      --text: #1a1a18; --text2: #5f5e5a; --text3: #888780;
+      --radius-md: 8px; --radius-lg: 12px;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --font-mono: "SF Mono", "Cascadia Code", "Fira Code", monospace;
+      
+      /* Chat Colors */
+      --user-bg: #E6F1FB; --user-text: #042C53; --user-border: #B5D4F4; --user-label: #185FA5;
+      --asst-bg: #EEEDFE; --asst-text: #26215C; --asst-border: #CECBF6; --asst-label: #3C3489;
+      --sys-bg: #F1EFE8; --sys-text: #5f5e5a; --sys-border: rgba(0,0,0,0.15);
+      --tool-bg: #E1F5EE; --tool-text: #04342C; --tool-border: #9FE1CB; --tool-label: #0F6E56;
+      --danger-bg: #FCEBEB; --danger-text: #A32D2D;
+
+      /* Links */
+      --link: #185FA5;
+      --link-hover: #0C447C;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a18; --bg-alpha: rgba(26, 26, 24, 0.85);
+        --surface: #242422; --surface2: #2c2c2a;
+        --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+        --text: #f0ede8; --text2: #b4b2a9; --text3: #888780;
+        
+        /* Chat Colors Dark Mode */
+        --user-bg: #0C447C; --user-text: #E6F1FB; --user-border: #185FA5; --user-label: #85B7EB;
+        --asst-bg: #26215C; --asst-text: #EEEDFE; --asst-border: #534AB7; --asst-label: #AFA9EC;
+        --sys-bg: #2c2c2a; --sys-text: #888780; --sys-border: rgba(255,255,255,0.1);
+        --tool-bg: #04342C; --tool-text: #E1F5EE; --tool-border: #1D9E75; --tool-label: #5DCAA5;
+        --danger-bg: #3d1a1a; --danger-text: #f09595;
+
+        /* Links Dark Mode */
+        --link: #85B7EB;
+        --link-hover: #B5D4F4;
+      }
+    }
+
+    /* --- BASE STYLES --- */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: var(--bg); color: var(--text);
+      font-family: var(--font-sans); font-size: 15px;
+      line-height: 1.6; min-height: 100vh; scroll-behavior: smooth;
+    }
+    a { color: var(--link); text-decoration: none; transition: color 0.2s; }
+    a:hover, a:focus { color: var(--link-hover); text-decoration: underline; }
+    code { font-family: var(--font-mono); font-size: 0.9em; padding: 0.1em 0.3em; background: rgba(128,128,128,0.15); border-radius: 4px; }
+
+    /* --- LAYOUT STYLES --- */
+    .container { max-width: 800px; margin: 0 auto; padding: 2rem 2rem 4rem 2rem; }
+    
+    main { display: flex; flex-direction: column; gap: 2rem; }
+    
+    .content-section {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 2rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    }
+    .section-title {
+      font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;
+      padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);
+    }
+
+    /* --- BREADCRUMBS STYLES --- */
+    .breadcrumbs {
+      margin-bottom: 2rem;
+      font-size: 0.95rem;
+    }
+    .breadcrumbs ol { display: flex; flex-wrap: wrap; list-style: none; gap: 0.5rem; }
+    .breadcrumbs li { display: flex; align-items: center; gap: 0.5rem; color: var(--text3); }
+    .breadcrumbs li::before { content: "/"; color: var(--border2); }
+    .breadcrumbs li:first-child::before { display: none; }
+    .breadcrumbs a { color: var(--text2); }
+    .breadcrumbs a:hover { color: var(--link-hover); }
+    .breadcrumbs [aria-current="page"] { color: var(--text); font-weight: 600; }
+
+    /* --- HEADER STYLES --- */
+    .page-header { margin-bottom: 3rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+    .page-title { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
+    .page-subtitle { font-size: 1.15rem; color: var(--text2); }
+
+    /* --- CHAT MESSAGE STYLES --- */
+    .chat-container { display: flex; flex-direction: column; gap: 1rem; }
+    .chat-msg {
+      padding: 1.25rem; border-radius: var(--radius-md);
+      border: 1px solid; position: relative;
+    }
+    .chat-role {
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; margin-bottom: 0.5rem;
+    }
+    
+    /* System Message */
+    .chat-msg.system { background: var(--sys-bg); border-color: var(--sys-border); color: var(--sys-text); }
+    .chat-msg.system .chat-role { color: var(--sys-text); }
+    
+    /* User Message */
+    .chat-msg.user { background: var(--user-bg); border-color: var(--user-border); color: var(--user-text); }
+    .chat-msg.user .chat-role { color: var(--user-label); }
+    
+    /* Assistant Message */
+    .chat-msg.assistant { background: var(--asst-bg); border-color: var(--asst-border); color: var(--asst-text); }
+    .chat-msg.assistant .chat-role { color: var(--asst-label); }
+
+    /* Footer */
+    .page-footer { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border); text-align: center; color: var(--text3); font-size: 0.9rem; }
+    
+    /* =========================================
+       STANDARD LISTS (For general text/content)
+       ========================================= */
+    .content-section ul,
+    .content-section ol {
+      margin-top: 1rem;
+      margin-bottom: 1.5rem;
+      padding-left: 1.5rem;
+    }
+
+    .content-section li {
+      margin-bottom: 0.5rem;
+      color: var(--text);
+    }
+
+    /* Removes margin from the last item so it doesn't mess up section spacing */
+    .content-section li:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Custom bullet color */
+    .content-section ul ::marker {
+      color: var(--text3);
+    }
+
+    /* Custom number style for ordered lists */
+    .content-section ol ::marker {
+      color: var(--text2);
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+      font-weight: 600;
+    }
+
+
+    /* =========================================
+       FILE/DATASET LISTS (Interactive, fancier)
+       ========================================= */
+    .file-list {
+      list-style: none; /* Removes default bullets */
+      padding: 0;
+      margin: 1rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .file-list li {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      transition: all 0.2s ease-in-out;
+    }
+
+    .file-list li:hover {
+      background: var(--surface2);
+      border-color: var(--border2);
+    }
+
+    .file-list a {
+      display: flex;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      color: var(--text);
+      font-weight: 500;
+      text-decoration: none; /* Removes standard underline */
+    }
+
+    /* The arrow icon before the text */
+    .file-list a::before {
+      content: "📄"; /* You can change this to an SVG or arrow like "→" */
+      margin-right: 0.75rem;
+      font-size: 1.1em;
+      opacity: 0.7;
+    }
+
+    .file-list a:hover {
+      color: var(--link-hover);
+    }
+
+    /* Optional subtext (e.g. file size) inside the list item */
+    .file-list .file-meta {
+      margin-left: auto; /* Pushes meta text to the far right */
+      font-size: 0.85em;
+      color: var(--text3);
+      font-family: var(--font-mono);
+    }
+      
+      /* --- SUBSECTION TITLE (H3) --- */
+      .subsection-title {
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-top: 1.75rem; /* Pushes down from the previous paragraph */
+        margin-bottom: 0.75rem;
+        line-height: 1.4;
+      }
+
+      /* --- MINOR TITLE (H4) --- */
+      .minor-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text2);
+        text-transform: uppercase; /* Makes it distinct from standard bold text */
+        letter-spacing: 0.05em;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      /* Optional: If a heading is the very first thing in a container,
+         remove its top margin so it doesn't create unwanted empty space */
+      .subsection-title:first-child,
+      .minor-title:first-child {
+        margin-top: 0;
+      }
+
+      /* Optional: Style bare h3/h4 tags inside content sections
+         just in case you forget to add the classes */
+      .content-section h3 {
+        @extend .subsection-title; /* (Conceptual - use the rule below in plain CSS) */
+      }
+      .content-section h3 { font-size: 1.15rem; font-weight: 600; margin-top: 1.75rem; margin-bottom: 0.75rem; }
+      .content-section h4 { font-size: 0.85rem; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- Navigation Breadcrumbs -->
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="index.html#available-datasets">Datasets</a></li>
+        <li><span aria-current="page">Synthetic Chats</span></li>
+      </ol>
+    </nav>
+
+    <!-- Header -->
+    <header class="page-header">
+      <h1 class="page-title">synthetic chats</h1>
+      <p class="page-subtitle">AI-generated conversations to teach LLMs how to reason about 4D programming language</p>
+    </header>
+
+    <main>
+      
+      <!-- Explanation Section -->
+      <section class="content-section">
+        <h2 class="section-title">About this dataset</h2>
+        <p>This dataset contains simulated conversations between a human developer and an AI assistant.</p>
+        <h3 class="subsection-title">Used model</h3>
+        <ul><li><code>grok-4-20-reasoning</code> by <strong>xAI</strong></li>
+        </ul>
+        
+      </section>
+      
+      <!-- Explanation for System Prompt -->
+      <section class="content-section">
+        <h2 class="section-title">System Prompt</h2>
+        <p style="margin-bottom: 1.5rem; color: var(--text2);">All instructions are predicated by the same system prompt:</p>
+                
+        <div class="chat-container">
+            <div class="chat-msg system">
+              <div class="chat-role">System</div>
+              <div>
+                  You are expected to create fine-tuning dataset for the &quot;4D&quot; (4th Dimension) programming language.
+
+                  // Variable declaration rules
+                  Make sure all local variables are declared explicitly.
+                  Use the new &quot;var $number : Integer&quot; syntax, not the legacy &quot;C_LONGINT($number)&quot; syntax.
+                  Use the new &quot;#DECLARE($number : Integer) : Object&quot; syntax, not the legacy &quot;C_LONGINT($1)\nC_OBJECT($0)&quot; syntax.
+
+                  // Literal syntax rules
+                  Use the new object literal syntax:
+                    var $object : Object
+                    $object:={number: 12345; string: &quot;abcde&quot;}
+                  not the legacy:
+                    C_OBJECT($object)
+                    $object:=New object(&quot;number&quot;; 12345; &quot;string&quot;; &quot;abcde&quot;)
+
+                  Use the new collection literal syntax:
+                    var $collection : Collection
+                    $collection:=[12345; &quot;abcde&quot;]
+                  not the legacy:
+                    C_COLLECTION($collection)
+                    $collection:=New collection(12345; &quot;abcde&quot;)
+
+                  For example:
+                    var $numbers : Collection
+                    var $filtered : Collection
+                    $numbers:=[50; 150; 80; 200; 30]
+                    $filtered:=$numbers.filter(Formula($1.result:=$1.value&gt;100))
+                    // $filtered is now [150, 200]
+
+                  // Parameter rules
+                  Always use semicolons as parameter separators, never commas:
+                    String($n; &quot;##0.00&quot;)      not  String($n, &quot;##0.00&quot;)
+                    ALERT(&quot;Hello&quot;; &quot;Title&quot;)   not  ALERT(&quot;Hello&quot;, &quot;Title&quot;)
+
+                  // String rules
+                  Use double quotes for strings: &quot;hello&quot; not 'hello'.
+                  Use &quot;\n&quot; for line breaks in strings.
+
+                  // Operator rules
+                  Use the new break, return, continue keywords where appropriate.
+                  Use the new &amp;&amp; and || short circuit operators where appropriate.
+                  Use the new +=, -=, *=, /= compound operators where appropriate.
+                  Use the new a ? b : c ternary operator where appropriate.
+
+                  // Precedence rules
+                  4D has strict left-to-right precedence, in which algebraic order is not observed.
+                  For example: 3+4*5 returns 35, because the expression is evaluated as (3+4)*5.
+                  To override left-to-right precedence you MUST use parentheses: 3+(4*5) returns 23.
+                  The &amp;&amp; and || operators have the same precedence as &amp; and | and are evaluated left to right.
+                  This means a || b &amp;&amp; c is evaluated as (a || b) &amp;&amp; c.
+
+                  // Command name rules
+                  Do NOT add the command number suffix: use &quot;String($number)&quot; not &quot;String:C10($number)&quot;.
+                  Always use English command names unless explicitly instructed to use French command names.
+
+                  // Code style rules
+                  Always indent code inside If, Else, For, While, Case of, For each blocks.
+                  Always explicitly close every block: End if, End for, End while, End case, End for each.
+                  Never leave empty Catch blocks &mdash; always assign an error message inside.
+                  Always release resources when done: RELEASE MENU($menu), etc.
+
+                  // Response rules
+                  Assistant responses must always contain working 4D code.
+                  Be specific and concrete &mdash; never describe features in vague terms.
+                  Do not use markdown code fences in the assistant response.
+                  Do not add explanations outside the assistant content field.
+
+                  // Diversity rules
+                  Each example must cover a different 4D topic or command.
+                  Do not repeat the same commands or patterns across examples.
+                  Cover a mix of: collections, objects, strings, dates, file I/O,
+                    database operations, UI, networking, error handling.
+                  Vary the user tone:
+                    - Sometimes terse: &quot;how do I sort a collection?&quot;
+                    - Sometimes sharing broken code asking for review
+                    - Sometimes asking about a specific command
+                    - Sometimes asking for a complete working example
+                  Lean towards topics that are relative new to the product. That would include:
+
+                  Object notation
+
+                  Object,
+                  Collection,
+                  Storage,
+                  Vector,
+                  Folder,
+                  FileHandle,
+                  ZipFile,
+                  ZipArchive,
+                  File,
+                  Signal,
+                  Session,
+                  Function,
+                  ZipFolder,
+                  CryptoKey,
+                  SMTPTransporter,
+                  POP3Transporter,
+                  IMAPTransporter,
+                  MailAttachment,
+                  4D.Blob (which is different from BLOB),
+                  WebServer
+
+                  also ORDA
+
+                  DataStoreImplementation,
+                  DataClass,
+                  EntitySelection,
+                  Entity
+
+                  // Simplicity rules
+
+                  These features are typically implemented across multiple files using a callback mechanism. It is not possible to make an assessment without access to the full project directory and cross reference index of all related symbols.
+
+                  Exclude these from examples.
+
+                  HTTPRequest,
+                  SystemWorker,
+                  WebSocket,
+                  WebSocketConnection,
+                  HTTPAgent,
+                  UDPSocket,
+                  UDPEvent,
+                  TCPConnection,
+                  TCPEvent
+
+                  If you invent a dataClass name for the sake of example e.g. cs.InvoiceSelection, add a comment that indicates  it is an illustration. Remember to prepend the &quot;4D&quot; namespace (example: 4D.Blob, 4D.WebServer) when you use these built-in classes in code. Only Object and Collection can be used without namespace.
+
+                  // Format rules
+                  Do NOT fence your response with ```json and ```.
+                  Generate strict JSON without any additional comments or annotations.
+                  Output a single valid JSON array containing exactly 20 objects.
+                  Each object must have exactly ONE messages array with exactly TWO elements:
+                    one user turn and one assistant turn.
+                  No multi-turn conversations. No follow-up exchanges.
+
+                  Here is one example of a perfect output row:
+
+                  {
+                    &quot;messages&quot;: [
+                      {
+                        &quot;role&quot;: &quot;user&quot;,
+                        &quot;content&quot;: &quot;How do I sort a collection of objects by a numeric field?&quot;
+                      },
+                      {
+                        &quot;role&quot;: &quot;assistant&quot;,
+                        &quot;content&quot;: &quot;var $people : Collection\nvar $sorted : Collection\n$people:=[{name: \&quot;Alice\&quot;; age: 30}; {name: \&quot;Bob\&quot;; age: 25}]\n$sorted:=$people.orderBy(\&quot;age asc\&quot;)\n// $sorted is now [{name: \&quot;Bob\&quot;; age: 25}; {name: \&quot;Alice\&quot;; age: 30}]&quot;
+                      }
+                    ]
+                  }
+
+                  // Declaration rules
+
+                  Keep in mind that all local variables must be explicitly declared. For example:
+
+                  incomplete, compilation fail
+
+                  var $products : cs.ProductSelection // cs.ProductSelection is an illustration
+                  $products:=ds.Product.query(&quot;Price &gt; :1&quot;; 100)
+                  For each ($product; $products)
+                   ALERT($product.Name)
+                  End for each
+
+                  should be corrected to
+
+                  var $products : cs.ProductSelection
+                  $products:=ds.Product.query(&quot;Price &gt; :1&quot;; 100)
+                  var $product : cs.ProductEntity // &lt;=== declaration was missing here
+                  For each ($product; $products)
+                   ALERT($product.Name)
+                  End for each
+
+                  Keep in mind that 4D constants and legacy command names may control spaces.
+
+                  incomplete, compilation fail
+
+                  var $file : 4D.File
+                  var $obj : Object
+                  $file:=Folder(fkDatabaseFolder).file(&quot;data.json&quot;)
+                  If ($file.exists)
+                    $obj:=$file.toObject()
+                  End if
+
+                  should be corrected to
+
+                  var $file : 4D.File
+                  var $obj : Object
+                  $file:=Folder(fk database folder).file(&quot;data.json&quot;)
+                  If ($file.exists)
+                    $obj:=$file.toObject()
+                  End if
+
+                  Do not call functions as a procedure. For example:
+
+                  incomplete, compilation fail
+
+                  var $zipFile : 4D.File
+                  var $sourceFolder : 4D.Folder
+                  $zipFile:=Folder(fk desktop folder).file(&quot;archive.zip&quot;)
+                  $sourceFolder:=Folder(fk desktop folder).folder(&quot;MyData&quot;)
+                  ZIP Create archive($sourceFolder; $zipFile)
+
+                  should be
+
+                  var $zipFile : 4D.File
+                  var $sourceFolder : 4D.Folder
+                  $zipFile:=Folder(fk desktop folder).file(&quot;archive.zip&quot;)
+                  $sourceFolder:=Folder(fk desktop folder).folder(&quot;MyData&quot;)
+                  var $status : Object
+                  status:=ZIP Create archive($sourceFolder; $zipFile)
+
+                  Commands and procedures that do not return a result are all uppercase in 4D.
+                  Methods and functions that do return a result have lowercase letters in their names.
+
+                  Be careful to pass the correct data type. For example:
+
+                  incorrect, compilation fail
+
+                  var $key : 4D.CryptoKey
+                  var $encrypted : Object
+                  $key:=4D.CryptoKey.new({type: &quot;AES&quot;})
+                  $encrypted:=$key.encrypt(&quot;my secret text&quot;)
+
+                  should be
+
+                  var $key : 4D.CryptoKey
+                  var $encrypted : Text
+                  $key:=4D.CryptoKey.new({type: &quot;RSA&quot;})
+                  $encrypted:=$key.encrypt($message; {encodingEncrypted: &quot;Base64&quot;})
+
+                  and
+
+                  incorrect, compilation fail
+
+                  Try
+                      var $file : 4D.File
+                      $file:=Folder(fk database folder).file(&quot;missing.txt&quot;)
+                      var $text : Text
+                      $text:=$file.getText()
+                  Catch
+                      var $error : Object
+                      $error:=Last errors
+                      ALERT(&quot;An error occurred&quot;)
+                  End try
+
+                  should be
+
+                  Try
+                      var $file : 4D.File
+                      $file:=Folder(fk database folder).file(&quot;missing.txt&quot;)
+                      var $text : Text
+                      $text:=$file.getText()
+                  Catch
+                      var $errors : Collection
+                      $errors:=Last errors
+                      ALERT(&quot;An error occurred&quot;)
+                  End try
+
+                  and
+
+                  incorrect, compilation fail
+
+                  var $transporter : 4D.POP3Transporter
+                  var $options : Object
+                  var $info : Object
+                  $options:={host: &quot;pop.example.com&quot;; user: &quot;me@example.com&quot;; password: &quot;pass&quot;}
+                  $transporter:=4D.POP3Transporter.new($options)
+                  $info:=$transporter.getMailInfoList()
+
+                  should be
+
+                  var $transporter : 4D.POP3Transporter
+                  var $options : Object
+                  var $info : Collection
+                  $options:={host: &quot;pop.example.com&quot;; user: &quot;me@example.com&quot;; password: &quot;pass&quot;}
+                  $transporter:=4D.POP3Transporter.new($options)
+                  $info:=$transporter.getMailInfoList()
+
+                  Do not invent constant values or use them out of context. For example:
+
+                  incorrect, compilation fail
+
+                  $file:=File(&quot;/path/to/file.txt&quot;; fk text)
+
+                  should be
+
+                  $file:=File(&quot;/path/to/file.txt&quot;; fk posix path)
+
+                  Respect the shared object rule. For example:
+
+                  incorrect, compilation fail
+
+                  var $session : Session
+                  $session:=Session
+                  $session.storage.username:=&quot;john&quot;
+
+                  should be
+
+                  var $session : 4D.Session  //don't forget the 4D namespace; you can also simply declare as Object
+                  $session:=Session // $session is a shared object
+                  var $user : Object
+                  $user:=New shared object(&quot;name&quot;; &quot;john&quot;)  //$session.storage can't be modifiled so create a new shared object
+                  Use ($session.storage)  //lock the shared Session.storage object for writing
+                      $session.storage.user:=$user  //$user now belongs to the same object group as Session.storage
+                  End use
+
+                  Do not omit mandatory parameters: For example:
+
+                  incorrect, compilation fail
+
+                  var $transporter : 4D.IMAPTransporter
+                  var $options : Object
+                  var $mails : Object
+                  $options:={host: &quot;imap.example.com&quot;; user: &quot;me@example.com&quot;; password: &quot;pass&quot;}
+                  $transporter:=4D.IMAPTransporter.new($options)
+                  $mails:=$transporter.getMails({start: 1; count: 5})
+
+                  should be
+
+                  var $transporter : 4D.IMAPTransporter
+                  var $options : Object
+                  var $mails : Object
+                  $options:={host: &quot;imap.example.com&quot;; user: &quot;me@example.com&quot;; password: &quot;pass&quot;}
+                  $transporter:=4D.IMAPTransporter.new($options)
+                  var $ids : Collection
+                  $mails:=$transporter.getMails($ids; {start: 1; count: 5})
+
+                  Use the correct pattern to instantiate special classed of object. For example, 4D.Blob, which is an immutable box object to contain binary data, is typically created using a command that was originally designed to return a BLOB.
+
+                  incorrect, compilation fail
+
+                  var $blob : 4D.Blob
+                  var $text : Text
+                  $text:=&quot;Sample text&quot;
+                  $blob:=4D.Blob.new($text)
+                  var $size : Integer
+                  $size:=$blob.size
+
+                  should be
+
+                  var $blob : 4D.Blob
+                  var $text : Text
+                  $text:=&quot;Sample text&quot;
+                  $blob:=4D.Blob
+                  CONVERT FROM TEXT($text; &quot;utf-8&quot;; $blob)
+                  var $size : Integer
+                  $size:=$blob.size
+
+                  Be especially careful when classic procedural function need to be used with new object oriented style. For example:
+
+                  incorrect, compilation fail
+
+                  var $file : 4D.File
+                  $file:=Folder(fk temporary folder).file(&quot;log.txt&quot;)
+                  var $status : Object
+                  $status:=$file.setText(&quot;Log entry&quot;)
+                  If ($status.success)
+                      // file written successfully
+                  End if
+
+                  should be
+
+                  var $file : 4D.File
+                  $file:=Folder(Temporary folder; fk platform path).file(&quot;log.txt&quot;)
+                  var $status : Object
+                  $status:=$file.setText(&quot;Log entry&quot;)
+                  If ($status.success)
+                      // file written successfully
+                  End if
+
+                  4D command names are not always consistent. For example:
+
+                  incorrect, compilation fail
+
+                  $attachment:=New 4D.MailAttachment(File(&quot;/path/to/file.txt&quot;))
+
+                  should be
+
+                  $attachment:=MAIL New attachment(File(&quot;/path/to/file.txt&quot;))
+
+                  Variables can't be declared inline. For example:
+
+                  incorrect, compilation fail
+
+                  var $folder : 4D.Folder
+                  $folder:=Folder(fk documents folder)
+                  If ($folder.exists)
+                      var $files : Collection
+                      $files:=$folder.files()
+                      For each ($file : 4D.File; $files)
+                          ALERT($file.name)
+                      End for each
+                  End if
+
+                  should be
+
+                  var $folder : 4D.Folder
+                  $folder:=Folder(fk documents folder)
+                  If ($folder.exists)
+                      var $files : Collection
+                      $files:=$folder.files()
+                      var $file : 4D.File
+                      For each ($file; $files)
+                          ALERT($file.name)
+                      End for each
+                  End if
+
+                  Never leave a local variable undeclared. If not, the code will not compile.
+
+                  Not all options are objects. Follow the documented specification carefully. For example:
+
+                  incorrect, compilation fail
+
+                  $files:=$folder.files({recursive: True; ignoreInvisible; True})
+
+                  should be
+
+                  $files:=$folder.files(fk ignore invisible | fk recursive)
+
+                  // Check documentation
+
+                  Always lookup developer.4d.com for reference if in doubt of command names, syntax, or rules.
+              </div>
+            </div>
+        </div>
+        
+        <br>
+        <p style="margin-bottom: 1.5rem; color: var(--text2);">The instruction &quot;Do not include any of the following or similar cases&quot; is added at the end of each prompt followed by  results from earlier calls.</p>
+        
+      </section>
+      
+      <!-- Explanation for rewrite -->
+      <section class="content-section">
+        <h2 class="section-title">Critique</h2>
+        <p style="margin-bottom: 1.5rem; color: var(--text2);">The <strong>critique</strong> dataset was generated using the following user prompt:</p>
+        
+        <div class="chat-container">
+            <div class="chat-msg user">
+              <div class="chat-role">User</div>
+              <div>
+                  The user shares code and asks for review:
+                  &quot;Can you review this 4D code?&quot;
+                  &quot;What do you think of this code?&quot;
+                  &quot;Is there anything wrong with this?&quot;
+                  &quot;Take a look at this and tell me what you think.&quot;
+                  &quot;Is there a better way to do this?&quot;
+                  &quot;How would you improve this?&quot;
+                  &quot;Can this be written better?&quot;
+                  &quot;Any suggestions for this code?&quot;
+                  &quot;What's wrong with this code?&quot;
+                  &quot;Can you spot any issues here?&quot;
+                  &quot;What could go wrong with this approach?&quot;
+                  &quot;Is this correct or am I missing something?&quot;
+                  &quot;I wrote this &mdash; thoughts?&quot;
+                  &quot;Does this look right to you?&quot;
+                  &quot;Not sure about this one.&quot;
+                  &quot;This works but feels off.&quot;
+                  The code shared ranges from a single expression to ~30 lines.
+                  The assistant critiques it across readability, performance, and correctness &mdash; praising what's good, flagging what's improvable, and offering a revised version.
+              </div>
+            </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="page-footer">
+      <p>Open source project hosted on <a href="https://miyako.github.io/datasets/">GitHub</a>.</p>
+    </footer>
+
+  </div>
+
+</body>
+</html>
