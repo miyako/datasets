@@ -72,7 +72,52 @@ function processInput() {
 function extractMessages(data) {
   if (Array.isArray(data)) return data;
   if (data && Array.isArray(data.messages)) return data.messages;
+  if (data && typeof data.text === 'string') return textFieldToMessages(data.text);
   return [data]; // Graceful fallback
+}
+
+// -- {"text":"..."} support --
+// Tries to parse the text value as structured chat turns; falls back to a
+// plain user message so the record always renders as something useful.
+
+function textFieldToMessages(text) {
+  return parseImTokens(text) || parseHumanAssistantTurns(text) || [{ role: 'user', content: text }];
+}
+
+function parseImTokens(text) {
+  // Handles <|im_start|>role\ncontent<|im_end|> tokens (e.g. ChatML fine-tune format)
+  const re = /<\|im_start\|>([\s\S]*?)<\|im_end\|>/g;
+  const messages = [];
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const block = m[1];
+    const nl = block.indexOf('\n');
+    if (nl === -1) continue;
+    const role    = block.slice(0, nl).trim();
+    const content = block.slice(nl + 1).trim();
+    if (role) messages.push({ role, content });
+  }
+  return messages.length ? messages : null;
+}
+
+function parseHumanAssistantTurns(text) {
+  // Handles "Human: …\nAssistant: …" style turn markers
+  const re = /(?:^|\n)(Human|User|Assistant|System)\s*:\s*/gi;
+  const roleMap = { human: 'user', user: 'user', assistant: 'assistant', system: 'system' };
+  const matches = [];
+  let m;
+  while ((m = re.exec(text)) !== null) matches.push({ label: m[1], index: m.index + m[0].indexOf(m[1]) });
+  if (matches.length < 2) return null;
+  const messages = [];
+  for (let i = 0; i < matches.length; i++) {
+    const role    = roleMap[matches[i].label.toLowerCase()];
+    if (!role) return null;
+    const start   = text.indexOf(':', matches[i].index) + 1;
+    const end     = i + 1 < matches.length ? matches[i + 1].index : text.length;
+    const content = text.slice(start, end).trim();
+    messages.push({ role, content });
+  }
+  return messages.length ? messages : null;
 }
 
 // -- Formatting & Helpers --
@@ -81,12 +126,74 @@ function esc(s) {
 }
 
 function formatMarkdown(text) {
-  let safeText = esc(text);
-  // Code Blocks ```code```
-  safeText = safeText.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-  // Inline code `code`
-  safeText = safeText.replace(/`([^`]+)`/g, '<code>$1</code>');
-  return safeText;
+  let s = esc(text);
+
+  // --- Block-level (process before inline so we can protect <pre> content) ---
+
+  // Fenced code blocks  ```lang\ncode```
+  // Stash them so inner content is never touched by inline rules.
+  const stash = [];
+  s = s.replace(/```([\s\S]*?)```/g, (_, inner) => {
+    stash.push('<pre><code>' + inner + '</code></pre>');
+    return '\x00STASH' + (stash.length - 1) + '\x00';
+  });
+
+  // Headings  # H1  ## H2  ### H3  (mapped to h3/h4/h5 to stay below page h1)
+  s = s.replace(/^######\s+(.+)$/gm, '<h8>$1</h8>');
+  s = s.replace(/^#####\s+(.+)$/gm,  '<h7>$1</h7>');
+  s = s.replace(/^####\s+(.+)$/gm,   '<h6>$1</h6>');
+  s = s.replace(/^###\s+(.+)$/gm,    '<h5>$1</h5>');
+  s = s.replace(/^##\s+(.+)$/gm,     '<h4>$1</h4>');
+  s = s.replace(/^#\s+(.+)$/gm,      '<h3>$1</h3>');
+
+  // Horizontal rules  --- / ***
+  s = s.replace(/^(?:---+|\*\*\*+)\s*$/gm, '<hr>');
+
+  // Unordered lists  - item  or  * item  (consecutive lines → <ul>)
+  s = s.replace(/((?:^[ \t]*[-*]\s+.+\n?)+)/gm, block => {
+    const items = block.trim().split(/\n/).map(l => '<li>' + l.replace(/^[ \t]*[-*]\s+/, '') + '</li>');
+    return '<ul>' + items.join('') + '</ul>';
+  });
+
+  // Ordered lists  1. item
+  s = s.replace(/((?:^[ \t]*\d+\.\s+.+\n?)+)/gm, block => {
+    const items = block.trim().split(/\n/).map(l => '<li>' + l.replace(/^[ \t]*\d+\.\s+/, '') + '</li>');
+    return '<ol>' + items.join('') + '</ol>';
+  });
+
+  // Blockquote  > text
+  s = s.replace(/^&gt;\s+(.+)$/gm, '<blockquote>$1</blockquote>');
+
+  // --- Inline ---
+
+  // Inline code  `code`  (stash so inner content is untouched)
+  s = s.replace(/`([^`]+)`/g, (_, inner) => {
+    stash.push('<code>' + inner + '</code>');
+    return '\x00STASH' + (stash.length - 1) + '\x00';
+  });
+
+  // Bold+italic  ***text***  or  ___text___
+  s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  s = s.replace(/___(.+?)___/g,            '<strong><em>$1</em></strong>');
+
+  // Bold  **text**  or  __text__
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/__(.+?)__/g,        '<strong>$1</strong>');
+
+  // Italic  *text*  or  _text_  (avoid false positives on lone underscores)
+  s = s.replace(/\*(?!\s)(.+?)(?<!\s)\*/g, '<em>$1</em>');
+  s = s.replace(/(?<!\w)_(?!\s)(.+?)(?<!\s)_(?!\w)/g, '<em>$1</em>');
+
+  // Strikethrough  ~~text~~
+  s = s.replace(/~~(.+?)~~/g, '<del>$1</del>');
+
+  // Newlines → <br> (outside block elements)
+  s = s.replace(/\n/g, '<br>');
+
+  // Restore stashed blocks (after <br> conversion so pre/code stay clean)
+  s = s.replace(/\x00STASH(\d+)\x00/g, (_, i) => stash[+i]);
+
+  return s;
 }
 
 function getContent(msg) {

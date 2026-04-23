@@ -40,15 +40,20 @@
       </div>
       <input type="file" id="file-picker" accept=".json,.jsonl,application/json" style="display:none" onchange="loadFile(this)">
 
-      <textarea id="json-input" placeholder='Paste ChatML JSON or JSONL here. 
-Supports arrays, {messages:[...]} objects, or multiple lines of JSON (JSONL).
+      <textarea id="json-input" placeholder='Paste ChatML JSON or JSONL here.
+Supports arrays, {messages:[...]} objects, multiple lines of JSON (JSONL),
+or {"text":"..."} JSONL (plain text, Human:/Assistant: turns, or <|im_start|> tokens).
 
-Example:
+Example — standard ChatML:
 [
   {"role": "system", "content": "You are a helpful assistant."},
   {"role": "user", "content": "Hello!"},
   {"role": "assistant", "content": "Hi there! How can I help?"}
 ]
+
+Example — text-field JSONL:
+{"text": "<|im_start|>user\nHello!<|im_end|><|im_start|>assistant\nHi!<|im_end|>"}
+{"text": "Human: What is 2+2?\nAssistant: 4."}
 
 Press Ctrl+Enter (Cmd+Enter on Mac) to render.'></textarea>
 
